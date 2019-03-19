@@ -6,7 +6,47 @@ int yyerror (const char* s);
 int yylex (void);
 
 FILE * yyin;
-%}	
+//initially assume there is a main.
+bool missing_main = false;
+string itos(int);
+string ctos(char*);
+void map_push(string, Var);
+void map_find(string, Var);
+map<string, Var> vmap;
+int temp_count = 0;
+int label_count = 0;
+string* temp();
+string* label();
+string syn_create(string*, string*, string*, string);
+string dot(string *);
+%}
+
+enum Type {INT,INT_ARR,FUNC};
+
+struct Var{
+    string *name;
+    string *value;
+    //vector
+    Type type;
+    int length;
+    string *index;
+} ;
+
+
+struct Terminal{
+   stringstream *code;
+   string *name;
+   string *value;
+   string *operator;
+   string *begin;
+   string *parent;
+   string *end;
+   Type type;
+   int length;
+   string *index;
+   vector<string> *ids;
+   vector<Var> *vars; 
+};
 
 //Bison Declarations
 
@@ -28,43 +68,238 @@ FILE * yyin;
 %right ASSIGN
 
 %%
-prog:	func prog {printf("prog -> func prog\n");}
-	|	{printf("prog -> epsilon\n");}
+prog:	func prog 
+		{
+			$$.code = $1.code;
+			*($$.code) << $2.code->str();
+			if(!no_main){
+				yyerror("Error. no main.");
+			}
+			all_code = $$.code;
+		}
+	|	
+		{
+			$$.code = new stringstream();
+		}
 	;
 
-func: 	FUNCTION ident SEMICOLON BEGIN_PARAMS func1 END_PARAMS BEGIN_LOCALS func1 END_LOCALS BEGIN_BODY stmt1 END_BODY {printf("FUNCTION ident SEMICOLON BEGIN_PARAMS func1 END_PARAMS BEGIN_LOCALS func1 END_LOCALS BEGIN_BODY stmt1 END_BODY\n"); }
+func: 	FUNCTION ident SEMICOLON BEGIN_PARAMS func1 END_PARAMS BEGIN_LOCALS func1 END_LOCALS BEGIN_BODY stmt1 END_BODY 
+		{
+			$$.code = new stringstream();
+			string place_holder = *$2.name;
+			if (place_holder.compare("main") == 0){
+				missing_main = true;
+			}
+			*($$.code) << "func " << place_holder << "\n" << $5.code->str() << $8.code->str();
+			for(int i = 0; i < $5.vars->size(); ++i){
+				if((*$5.vars)[i].type == INT_ARR){
+					yyerror("Error in passing in to array.");
+				} else if ((*5.vars)[i].type == INT){
+					*($$.code) << "= " << *((*$5.vars)[i].name) << ", " << "$"<< itos(i) << "\n";
+				} else {
+					yyerror("Error. passing in invalid type.");
+				}
+			}
+			*($$.code) << $11.code->str() << $13.code->str();
+		}
 			;
 
-func1:	decl SEMICOLON func1 {printf("func1 -> decl SEMICOLON func1\n");}
-	|	{printf("func1 -> epsilon\n");}
+func1:	decl SEMICOLON func1 
+		{
+			$$.code = $1.code;
+			$$.vars = $1.vars;
+			for(int i = 0; i < $3.vars->size(); ++i){
+				$$.vars->push_back((*$3.vars)[i]);
+			}
+			*($$.code) << $3.code->str();
+		}
+	 |	
+		{
+			$$.code = new stringstream();
+			$$.vars = new vector<Var>();
+		}
 	;
 
-decl: ident decl1 COLON array INTEGER {printf("decl -> ident decl1 COLON array INTEGER\n");}
+decl: ident decl1 COLON array INTEGER 
+		{
+			$$.code = $2.code;
+            $$.type = $2.type;
+            $$.length = $2.length;
+            $$.vars = $2.vars;
+
+            //=================
+            // if there is an issue. its right here. the stringstream concat.
+            $$.code << $4.code;
+            $$.type << $4.type;
+            $$.length << $4.length;
+            $$.vars << $4.vars;
+			//=================
+
+            Var v = Var();
+            v.type = $2.type;
+            v.length = $2.length;
+            v.name = new string();
+            *v.name = $1;
+            $$.vars->push_back(v);
+            if($2.type == INT_ARR){
+                if($2.length <= 0){
+                    yyerror("ERROR: array size");
+                }
+                *($$.code) << ".[] " << $1 << ", " << $2.length << "\n";
+                string s = $1;
+                if(!map_find(s)){
+                    map_push(s,v);
+                }
+                else{
+                    string tmp = "Error. (" + s + ") is defined more than once.";
+                    yyerror(tmp.c_str());
+                }
+            }
+
+            else if($2.type == INT){
+                *($$.code) << ". " << $1 << "\n";
+                string s = $1;
+                if(!map_find(s)){
+                    map_push(s,v);
+                } else{
+                    string tmp = "Error. (" + s + ") is defined more than once.";
+                    yyerror(tmp.c_str());
+                }
+            } else{
+                    yyerror("ERROR: invalid type");
+            }
+
+
+
+		}
 	;
 
-decl1:	COMMA ident decl1 {printf("decl1 -> COMMA ident decl\n");}
-	|	{printf("decl1 -> epsilon\n");}
+decl1:	COMMA ident decl1 
+		{
+			$$.code = $3.code;
+			$$.type = $3.type;
+			$$.length = $3.length;
+			$$.vars = $3.vars;
+			Var v = Var();
+			v.type = $3.type;
+			v.length = $3.length;
+			v.name = new string ();
+			*v.name = $2;
+			$$.vars->push_back(v);
+
+			if($3.type == INT_ARR){
+				*($$.code) << ".[] " << $2 << ", " << $3.length << "\n";
+				string s = %2;
+				if(!check_maps(s)){
+					in_map(s,v);
+				} else {
+					string tmp = "Error. (" + s + ") is defined more than once.";
+					yyerror(tmp.c_str());
+				}
+			} else if ($3.type == INT) {
+				*($$.code) << ". " << $2 << "\n";
+				string s = $2;
+				if(!map_find(s)){
+					map_push(s,v);
+				} else {
+					string tmp = "Error. (" + s + ") is defined more than once.";
+				}
+			}
+		}
+	|	
+		{
+			$$.code = new stringstream();
+            $$.vars = new vector<Var>();
+            $$.type = INT;
+            $$.length = 0;
+		}
 	;
 
-array: ARRAY L_SQUARE_BRACKET number R_SQUARE_BRACKET OF {printf("decl2 -> ARRAY L_SQUARE_BRACKET number R_SQUARE_BRACKET OF\n");}
-	|	{printf("array -> epsilon\n");}
+array: ARRAY L_SQUARE_BRACKET number R_SQUARE_BRACKET OF 
+		{
+			$$.length = $3;
+	        $$.vars = new vector<Var>();
+	        $$.code = new stringstream();
+	        $$.type = INT_ARR;
+		}
+
+	|	
+
+		{
+	        $$.type = INT;
+	        $$.vars = new vector<Var>();
+	        $$.length = 0;
+			$$.code = new stringstream();
+		}
 	;
 
-stmt:	asn_stmt {printf("stmt -> asn_stmt\n");}
-	|	if_stmt	{printf("stmt -> if_stmt\n");}
-	|	while_stmt {printf("stmt -> while_stmt\n");}
-	|	do_stmt {printf("stmt -> do_stmt\n");}
-	|	read_stmt {printf("stmt -> read_stmt\n");}
-	|	write_stmt {printf("stmt -> write_stmt\n");}
-	|	cont_stmt {printf("stmt -> cont_stmt\n");}
-	|	ret_stmt {printf("stmt -> ret_stmt\n");}
+stmt:	asn_stmt 
+		{
+			$$.code = $1.code;
+		}
+
+	|	if_stmt	
+		{
+			$$.code = $1.code;
+		}
+
+	|	while_stmt 
+		{
+			$$.code = $1.code;
+		}
+
+	|	do_stmt 
+		{
+			$$.code = $1.code;
+		}
+
+	|	read_stmt 
+		{
+			$$.code = $1.code;
+		}
+
+	|	write_stmt 
+		{
+			$$.code = $1.code;
+		}
+
+	|	cont_stmt 
+		{
+			$$.code = $1.code;
+		}
+
+	|	ret_stmt 
+		{
+			$$.code = $1.code;
+		}
 	;
 
 stmt1:	stmt SEMICOLON stmt1 {printf("stmt1 -> stmt SEMICOLON\n");}
 	|	stmt SEMICOLON {printf("stmt1 -> stmt SEMICOLON stmt1\n");}
 	;
 
-asn_stmt: var ASSIGN expr {printf("asn_stmt -> var ASSIGN expr\n");}
+asn_stmt: var ASSIGN expr 
+		{
+			$$.code = $1.code;
+			*($$.code) << $3.code->str();
+			if($1.type == INT && $3.type == INT){
+               *($$.code) << "= " << *$1.name << ", " << *$3.name << "\n";
+            }
+            else if($1.type == INT && $3.type == INT_ARR){
+                *($$.code) << syn_create($1.name, $3.name, $3.index, "=[]");
+            }
+            else if($1.type == INT_ARR && $3.type == INT && $1.value != NULL){
+                *($$.code) << syn_create($1.value, $1.index, $3.name, "[]=");
+            }
+            else if($1.type == INT_ARR && $3.type == INT_ARR){
+                string *tmp = temp();
+                *($$.code) << dot(tmp) << syn_create(tmp, $3.name, $3.index, "=[]");
+                *($$.code) << syn_create($1.value, "[]=", $1.index, tmp);
+            }
+            else{
+                yyerror("Error: expression is null.");
+            }
+		}
 
 if_stmt: IF bool_expr THEN stmt1 else_stmt	{printf("if_stmt -> IF bool_expr THEN stmt1 else_stmt\n");}
 		;
@@ -171,6 +406,63 @@ ident:	IDENT {printf("ident -> IDENT %s\n", $1);}
 number:	NUMBER {printf("number -> NUMBER %d\n", $1); }
 
 %%
+
+string ctos (char* str){
+	ostringstream char2str;
+	char2str << str;
+	return char2str.str();
+}
+
+string itos (int str){
+	ostringstream int2str;
+	int2str << str;
+	return int2str.str();
+}
+
+void map_push(string name, Var v){
+    if(vmap.find(name) == vmap.end()){
+        vmap[name] = v;
+    }
+    else{
+        string tmp = "ERROR: " + name + " already exists";
+        yyerror(tmp.c_str());
+    }
+}
+
+bool map_find(string name){
+    if(vmap.find(name) == vmap.end()){
+        return false;
+    }
+    return true;
+}
+
+string* temp() {
+	string* temp = new string();
+	ostringstream os;
+	os << temp_count;
+	*temp = "_temp_" + os.str();
+	temp_count++;
+	return temp;
+}
+
+string* label() {
+	string* temp = new string();
+	ostringstream os;
+	os << label_count;
+	*temp = "_label_" + os.str();
+	label_count++;
+	return temp;
+}
+
+string syn_create(string *name, string *first, string *second, string operator) 
+{
+	return (operator == "!") ? operator + " " + *name + ", " + *first + "\n" : operator + " " + *name + ", " + *first + ", "+ *second +"\n"
+}
+
+string dot(string *s)
+{ 
+	return ". " + *s + "\n"; 
+}
 
 int main (int argc, char ** argv)
 {
