@@ -15,10 +15,12 @@ void map_find(string, Var);
 map<string, Var> vmap;
 int temp_count = 0;
 int label_count = 0;
+void dne(string);
 string* temp();
 string* label();
 string syn_create(string*, string*, string*, string);
 string dot(string *);
+
 %}
 
 enum Type {INT,INT_ARR,FUNC};
@@ -31,6 +33,7 @@ struct Var{
     string *index;
 } ;
 
+map<string, Var> var_map;
 
 struct Terminal{
    stringstream *code;
@@ -561,8 +564,14 @@ expr:	multi_expr expr1
 		}
 			;
 
-expr1:		ADD multi_expr expr1 {printf("expr1 -> ADD multi_expr expr1\n");}
-		|	SUB multi_expr expr1 {printf("expr1 -> SUB multi_expr expr1\n");} 
+expr1:		ADD multi_expr expr1 
+			{
+				asdasdasdasdasdassadsadsa
+			}
+		|	SUB multi_expr expr1 
+			{
+				printf("expr1 -> SUB multi_expr expr1\n");
+			} 
 		|	
 			{
 				$$.code = new stringstream();
@@ -584,9 +593,18 @@ multi_expr:		term multi_expr1
 			}
 				;	
 
-multi_expr1:	MULT term multi_expr1 {printf("multi_expr -> MULT term multi_expr\n");}
-		|		DIV term multi_expr1 {printf("multi_expr -> DIV term multi_expr\n");}
-		|		MOD term multi_expr1 {printf("multi_expr -> MOD term multi_expr\n");}
+multi_expr1:	MULT term multi_expr1 
+				{
+					asdasdasdasdasdsadasdasdasdad
+				}
+		|		DIV term multi_expr1 
+				{
+					asdasdasdasdasdasdas
+				}
+		|		MOD term multi_expr1 
+				{
+					asdasdasdasdasdasdasdasdasd
+				}
 		|		
 			{
 				$$.code = new stringstream();
@@ -606,25 +624,98 @@ term:	term2
 			string temp = "-1";
 			*($$.code)<< dot($$.name) << syn_create($$.name, $2.name, &temp, "*");
 		}
-	|	ident L_PAREN term3 R_PAREN {printf("term -> ident L_PAREN term3 R_PAREN\n");}
+	|	ident L_PAREN term3 R_PAREN 
+		{
+			$$.code = $3.code;
+			$$.name = temp();
+			*($$.code) << dot($$.name) << "call " << $1 << ", " << *$$.name << "\n";
+			string temp = $1;
+			dne(temp);
+		}
 	;
 
-term2:		var {printf("term2 -> var\n");}
-		|	number {printf("term2 -> number\n");}
-		|	L_PAREN expr R_PAREN {printf("term2 -> L_PAREN expr R_PAREN\n");}
+term2:		var 
+		{
+			$$.code = $1.code;
+			$$.name = $1.name;
+			$$.index = $1.index;
+		}
+		|	number 
+			{
+				$$.code = new stringstream();
+				$$.name = new string();
+				*$$.name = to_string($1);
+			}
+		|	L_PAREN expr R_PAREN 
+			{
+				$$.code = $2.code;
+				$$.name = $2.name;
+			}
 		; 
 
-term3:		expr COMMA term3 {printf("term3 -> expr COMMA term3\n");}
-		|	expr {printf("term3 -> expr\n");}
-		|	{printf("term3 -> epsilon\n");}
+term3:		expr COMMA term3 
+		{
+			$$.code = $1.code;
+			*($$.code) << $3.code->str();
+			*($$.code) << "param " << *$
+		}
+		|	expr 
+			{
+				$$.code = $1.code;
+				*($$.code) << new stringstream()->str();
+				*($$.code) << "param " << *$ 
+
+			}
+		|	
+			{
+				$$.code = new stringstream();
+			}
 		;
 
 
-var:	ident {printf("var -> ident\n");}
-	|	ident L_SQUARE_BRACKET expr R_SQUARE_BRACKET {printf("var -> ident L_SQUARE_BRACKET expr R_SQUARE_BRACKET\n");}
+var:	IDENT var2 
+	{
+		$$.code = $2.code;
+		$$.type = $2.type;
+		string temp = $1;
+		dne(temp);
+		if(dne(temp) && var_map[temp].type != $2.type){
+			if($2.type == INT_ARR){
+				string errmsg = "Error: " + temp + " is not array type";
+				yyerror(errmsg.c_str());
+			} else if($2.type == INT){
+				string errmsg = "Error: no index specified.";
+				yyerror(errmsg.c_str());
+			}
+		}
+		if ($2.index == NULL){
+			$$.name = new string();
+			*$$.name = $1;
+		} else {
+			$$.index =$2.index;
+			$$.name = temp();
+			string* temp = new string();
+			*temp = $1;
+			*($$.code) << dot($$.name) << syn_create($$.place, temp, $2.index, "=[]");
+			$$.value = new string();
+			*$$.value = $1;
+		}
+	}
 	;
 
-ident:	IDENT {printf("ident -> IDENT %s\n", $1);}
+var2:	L_SQUARE_BRACKET expr R_SQUARE_BRACKET {
+			$$.code = $2.code;
+			$$.name = NULL;
+			$$.index = $2.name;
+			$$.ype = INT_ARR;
+		}
+	|
+		{
+			$$.code = new stringstream();
+			$$.index = NULL;
+			$$.name = NULL;
+			$$.type = INT;
+		}	
 	;
 
 number:	NUMBER {printf("number -> NUMBER %d\n", $1); }
@@ -635,6 +726,13 @@ string ctos (char* str){
 	ostringstream char2str;
 	char2str << str;
 	return char2str.str();
+}
+
+void dne(string key){
+	if(!map_find(key)){
+		string temp = "Error: " + key + " DNE.";
+		yyerror(temp.c_str());
+	} 
 }
 
 string itos (int str){
