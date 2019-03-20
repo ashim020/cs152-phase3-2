@@ -26,7 +26,6 @@ enum Type {INT,INT_ARR,FUNC};
 struct Var{
     string *name;
     string *value;
-    //vector
     Type type;
     int length;
     string *index;
@@ -274,8 +273,15 @@ stmt:	asn_stmt
 		}
 	;
 
-stmt1:	stmt SEMICOLON stmt1 {printf("stmt1 -> stmt SEMICOLON\n");}
-	|	stmt SEMICOLON {printf("stmt1 -> stmt SEMICOLON stmt1\n");}
+stmt1:	stmt SEMICOLON stmt1 
+		{
+			$$.code = $1.code;
+			*($$.code) << $3.code->();
+		}
+	|	
+		{
+			$$.code = new stringstream();
+		}
 	;
 
 asn_stmt: var ASSIGN expr 
@@ -301,87 +307,305 @@ asn_stmt: var ASSIGN expr
             }
 		}
 
-if_stmt: IF bool_expr THEN stmt1 else_stmt	{printf("if_stmt -> IF bool_expr THEN stmt1 else_stmt\n");}
+if_stmt: IF bool_expr THEN stmt1 else_stmt ENDIF
+		{
+			$$.end = label();
+			$$.begin = label();
+			$$.code = new stringstream();
+			*($$.code) << $2.code->str() << "?:= " << *$$.begin << ", " <<  *$2.name << "\n";
+			if($5.begin != NULL){
+				*($$.code) << go_to($5.begin);
+			 	*($$.code) << ": " + *($$.begin) + "\n" << $4.code->str() << ":= "+ *($$.end) + "\n";
+                *($$.code) << ": " + *($5.begin) + "\n" << $5.code->str();
+			} else {
+				*($$.code) << ": " + *($$.end) + "\n" << ": " + *($$.begin) + "\n"  << $4.code->str();
+			}
+			($$.code) << ": " + *($$.end) + "\n";
+		}
 		;
 
-else_stmt: ELSE stmt1 ENDIF {printf("else_stmt -> ELSE stmt1 ENDIF\n");}
-		|	ENDIF {printf("else_stmt -> ENDIF\n");}
+else_stmt: ELSE stmt1 
+			{
+				$$.code = $2.code;
+				$$.begin = label();
+			}
+		|
+			{
+				$$.code = new stringstream();
+				$$.begin = NULL;
+			}
 		;
 
-while_stmt: WHILE bool_expr BEGINLOOP stmt1 ENDLOOP {printf("while_stmt -> WHILE bool_expr BEGINLOOP stmt1 ENDLOOP\n");}
+while_stmt: WHILE bool_expr BEGINLOOP stmt1 ENDLOOP 
+			{
+				$$.parent = $3
+			}
 			;
 
 do_stmt:	DO BEGINLOOP stmt1 ENDLOOP WHILE bool_expr {printf("do_stmt -> DO BEGINLOOP stmt1 ENDLOOP WHILE bool_expr\n");}
 		;
 
-read_stmt: READ var r_w_stmt {printf("read_stmt -> READ var r_w_stmt\n");}
+read_stmt: READ var r_stmt 
+			{
+				$$.code = $2.code;
+				if($2.type == INT){
+					*($$.code) << ".< " << *$2.name << "\n";  
+				} else {
+					 *($$.code) << ".[]< " << *$2.name << ", " << $2.index << "\n"; 
+				}
+				*($$.code) << $3.code->str();
+			}
 		;
 
-write_stmt: WRITE var r_w_stmt {printf("read_stmt -> WRITE var r_w_stmt\n");}
-		;
+r_stmt: COMMA var r_stmt 
+		{
+			$$.code = $2.code;
+			if($2.type == INT){
+				*($$.code) << ".< " << *$2.name << "\n";
+			} else {
+				*($$.code) << ".[]< " << *$2.value << ", " << $2.index << "\n"; 
+			}
 
-r_w_stmt: COMMA var r_w_stmt {printf("r_w_stmt -> COMMA var r_w_stmt\n");}
-		|	{printf("r_w_stmt -> epsilon\n");}
+			*($$.code) << $3.code->str();
+		}
+		|	
+			{
+				$$.code = new stringstream();
+			}
 		; 
 
-cont_stmt:	CONTINUE {printf("cont_stmt -> CONTINUE\n");}
+write_stmt: WRITE var w_stmt 
+			{
+				$$.code = $2.code;
+				if($2.type == INT){
+					*($$.code) << ".> " << *$2.name << "\n";
+				} else {
+					*($$.code) << ".[]> " << *$2.value << ", " << *$2.index << "\n"
+				}
+				*($$.code) << $3.code->str();
+			}
 		;
 
-ret_stmt:	RETURN expr {printf("ret_stmt -> RETURN expr\n");}
+w_stmt: COMMA var w_stmt 
+		{
+			$$.code = $2.code;
+			if($2.type == INT){
+				*($$.code) << ".> " << *$2.name << "\n";
+			} else {
+				*($$.code) << ".[]> " << *$2.value << ", " << $2.index << "\n"; 
+			}
+
+			*($$.code) << $3.code->str();
+		}
+		|	
+			{
+				$$.code = new stringstream();
+			}
+		; 
+
+cont_stmt:	CONTINUE 
+			{
+				$$.code = new stringstream();
+				if(loop_stack.size() <= 0){
+					yyerror("Error. invalid use of continue.");
+				} else {
+					Loop cont = loop_stack.top();
+					*($$.code) << ":= " << *cont.parent << "\n";
+				}
+			}
+		;
+
+ret_stmt:	RETURN expr 
+			{
+				$$.name = $2.name;
+				$$.code = $2.code;
+				*($$.code) << "ret " << *$$.name << "\n";
+			}
 		;
 
 
-bool_expr:	and_expr or_expr {printf("bool_expr -> and_expr or_expr\n");}
+bool_expr:	and_expr or_expr 
+			{
+				$$.code = $2.code;
+				*($$.code) << $2.code->str();
+				if($2.name != NULL && $2.operator != NULL){
+					$$.name = temp();
+					*($$.code) << dot($$.name) << syn_create($$.name, $1.name, $2.name, *$2.operator); 
+				} else {
+					$$.name = $1.name;
+					$$.operator = $1.operator;
+				}
+			}
 		;
 
 or_expr:	OR and_expr or_expr {printf("or_expr -> OR and_expr or_expr\n");}
-		|	{printf("or_expr -> epslion\n");}
+		|	
+			{
+				$$.code = new stringstream();
+				$$.operator = NULL;
+			}
 		;
 
-and_expr:	rel_expr and_expr1	{printf("and_expr -> rel_expr and_expr1\n");}
+and_expr:	rel_expr and_expr1	
+			{
+				$$.code = $1.code;
+				*($$.code) << $2.code->str();
+				if($2.name != NULL && $2.operator != NULL){
+					$$.name = temp();
+					*($$.code) << dot($$.name) << syn_create($$.name, $1.name, $2.name, *$2.operator);
+				} else {
+					$$.name = $1.name;
+					$$.operator = $1.operator;
+				}
+			}
 		;
 
 and_expr1:	AND rel_expr and_expr1 {printf("and_expr1 -> AND rel_expr and_expr1\n");}
-		|	{printf("and_expr1 -> epsilon\n");}
+		|	
+			{
+				$$.code = new stringstream();
+				$$.operator = NULL;
+			}
 		;
 
-rel_expr:	rel_expr1	{printf("rel_expr -> rel_expr1\n");}
-		|	NOT rel_expr1	{printf("rel_expr -> NOT rel_expr1\n");}
+rel_expr:	rel_expr1	
+			{
+				$$.code = $1.code;
+				$$.name = $1.name;
+			}
+		|	NOT rel_expr1	
+			{
+				$$.code = $2.code;
+				$$.name = temp();
+				*($$.code) << dot($$.name) << syn_create($$.name, $2.name, NULL, "!");
+			}
 		;
 
-rel_expr1:	expr comp expr {printf("rel_expr1 -> expr comp expr\n");}
-		|	TRUE {printf("rel_expr1 -> TRUE\n");}
-		|	FALSE {printf("rel_expr1 -> FALSE\n");}
-		|	L_PAREN bool_expr R_PAREN {printf("rel_expr1 -> L_PAREN or_epxr R_PAREN\n");}
+rel_expr1:	expr comp expr 
+			{
+				$$.code = $1.code;
+				*($$.code) << $2.code->str();
+				*($$.code) << $3.code->str();
+				$$.name = temp();
+				*($$.code) << dot($$.name) << syn_create($$.name, $1.name, $3.name, *$2.operator);
+			}
+		|	TRUE 
+			{
+				$$.code = new stringstream();
+				$$.name = new string();
+				*$$.name = "1";
+			}
+		|	FALSE 
+			{
+				$$.code = new stringstream();
+				$$.name = new string();
+				*$$.name = "0";
+			}
+		|	L_PAREN bool_expr R_PAREN 
+			{
+				$$.code = $2.code;
+				$$.name = $2.name;
+			}
 		;
 
-comp:	EQ {printf("comp -> EQ\n");};
-	|	NEQ {printf("comp -> NEQ\n");}
-	|	LT 	{printf("comp -> LT\n");}
-	|	GT 	{printf("comp -> GT\n");}
-	|	GTE	{printf("comp -> GTE\n");}
-	|	LTE {printf("comp -> LTE\n");}
+comp:	EQ 
+		{
+			$$.code = new stringstream();
+			$$.operator = new string();
+			*$$.operator = "==";
+		}
+	|	NEQ 
+		{
+			$$.code = new stringstream();
+			$$.operator = new string();
+			*$$.operator = "!=";
+		}
+	|	LT 	
+		{
+			$$.code = new stringstream();
+			$$.operator = new string();
+			*$$.operator = "<";
+		}
+	|	GT 	
+		{
+			$$.code = new stringstream();
+			$$.operator = new string();
+			*$$.operator = ">";
+		}
+	|	GTE	
+		{
+			$$.code = new stringstream();
+			$$.operator = new string();
+			*$$.operator = ">=";
+		}
+	|	LTE 
+		{
+			$$.code = new stringstream();
+			$$.operator = new string();
+			*$$.operator = "<=";
+		}
 	;
 
-expr:	multi_expr expr1 {printf("expr -> multi_expr expr1\n");}
+expr:	multi_expr expr1 
+		{
+			$$.code = $1.code;
+			*($$.code) << $2.code->str();
+			if($2.name != NULL && $2.operator != NULL){
+				$$.name = temp();
+				*($$.code)<< dot($$.name) << syn_create($$.name, $1.name, $2.name, *$2.operator);
+			} else{
+				$$.name = $1.name;
+				$$.operator = $1.operator;
+			}
+			$$.type = INT;
+		}
 			;
 
 expr1:		ADD multi_expr expr1 {printf("expr1 -> ADD multi_expr expr1\n");}
 		|	SUB multi_expr expr1 {printf("expr1 -> SUB multi_expr expr1\n");} 
-		|	{printf("expr1 -> epsilon\n");}	
+		|	
+			{
+				$$.code = new stringstream();
+				$$.operator = NULL;
+			}	
 		;
 
-multi_expr:		term multi_expr1 {printf("multi_expr -> term multi_expr1\n");}
+multi_expr:		term multi_expr1 
+			{
+				$$.code = $1.code;
+				*($$.code) << $2.code->str();
+				if($2.name != NULL && $2.operator != NULL){
+					$$.name = temp();
+					*($$.code)<< dot($$.name)<< syn_create($$.name, $1.name, $2.name, *$2.operator);
+				} else {
+					$$.name = $1.name;
+					$$.operator = $1.operator;
+				}
+			}
 				;	
 
 multi_expr1:	MULT term multi_expr1 {printf("multi_expr -> MULT term multi_expr\n");}
 		|		DIV term multi_expr1 {printf("multi_expr -> DIV term multi_expr\n");}
 		|		MOD term multi_expr1 {printf("multi_expr -> MOD term multi_expr\n");}
-		|		{printf("multi_expr -> epsilon\n");}
+		|		
+			{
+				$$.code = new stringstream();
+				$$.op = NULL;
+			}
 		;
 
-term:	term2 {printf("term -> term2\n");}
-	|	SUB term2 {printf("term1 -> SUB term2\n");}
+term:	term2 
+		{
+			$$.code = $1.code;
+			$$.name = $1.name;
+		}
+	|	SUB term2 
+		{
+			$$.code = $2.code;
+			$$.name = temp();
+			string temp = "-1";
+			*($$.code)<< dot($$.name) << syn_create($$.name, $2.name, &temp, "*");
+		}
 	|	ident L_PAREN term3 R_PAREN {printf("term -> ident L_PAREN term3 R_PAREN\n");}
 	;
 
