@@ -15,6 +15,7 @@
 %{
  #include "heading.h"
  #include "y.tab.h"
+ #include "cstdlib"
  #include <string.h>
  #include <stdio.h>
  #include <stdlib.h>
@@ -35,7 +36,7 @@ inv_id_unscr    ({identifier}|{digit})+_+
 %%
   /*** Rules  ***/
   /* Resereved Words */
-"function"     { currPos += yyleng; printf("FUNCTION"); return FUNCTION; }
+"function"     { currPos += yyleng; /*printf("FUNCTION");*/ return FUNCTION; }
 "beginparams"  { currPos += yyleng; return BEGIN_PARAMS; }
 "endparams"    { currPos += yyleng; return END_PARAMS; }
 "beginlocals"  { currPos += yyleng; return BEGIN_LOCALS; }
@@ -78,7 +79,7 @@ inv_id_unscr    ({identifier}|{digit})+_+
 "<="           { currPos += yyleng; return LTE; }
 ">="           { currPos += yyleng; return GTE; }
   /* Identifiers and Numbers */
-{identifier}   { currPos += yyleng; yylval.cval = yytext; return IDENT; }  /* yytext - string that contains matched text */
+{identifier}   { currPos += yyleng;  yylval.cval = strdup(yytext); /*yylval.cval = yytext;*/ /*strcpy(yylval.cval,yytext);*/ /*strncpy(yylval.cval,yytext,yyleng);*/ return IDENT; }  /* yytext - string that contains matched text */
 {number}       { currPos += yyleng; yylval.val = atoi(yytext); return NUMBER; }
   /* Other Special Symbols */
 ";"            { currPos += yyleng; return SEMICOLON; }

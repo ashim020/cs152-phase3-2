@@ -6,7 +6,6 @@ int yyerror (const char* s);
 int yylex (void);
 
 //initially assume there is a main.
-bool missing_main = false;
 string itos(int);
 string ctos(char*);
 void map_push(string, Var);
@@ -55,7 +54,7 @@ bool success = true;
 %%
 prog:	func prog 
 		{	
-			printf("prog");
+			//printf("prog");
 			$$.code = $1.code;
 			*($$.code) << $2.code->str();
 			if(!pokerchips){
@@ -65,19 +64,19 @@ prog:	func prog
 		}
 	|	
 		{	
-			printf("prog2mjgmjyj");
+			//printf("prog2mjgmjyj");
 			$$.code = new stringstream();
-			printf("temr");
+			//printf("temr");
 		}
 	;
 
 func: 	FUNCTION ident SEMICOLON BEGIN_PARAMS func1 END_PARAMS BEGIN_LOCALS func1 END_LOCALS BEGIN_BODY stmt1 END_BODY 
 		{
-			printf("func");
+			//printf("func");
 			$$.code = new stringstream();
 			string place_holder = *$2.name;
 			if (place_holder.compare("main") == 0){
-				missing_main = true;
+				pokerchips = true;
 			}
 			*($$.code) << "func " << place_holder << "\n" << $5.code->str() << $8.code->str();
 			for(int i = 0; i < $5.vars->size(); ++i){
@@ -95,7 +94,7 @@ func: 	FUNCTION ident SEMICOLON BEGIN_PARAMS func1 END_PARAMS BEGIN_LOCALS func1
 
 ident: IDENT 
 		{
-			printf("ident");
+			//printf("ident");
 			string temp = $1;
 			Var appleiphonexs = Var();
 			appleiphonexs.type = FUNC;
@@ -109,7 +108,7 @@ ident: IDENT
 
 func1:	decl SEMICOLON func1 
 		{
-			printf("func1");
+			////printf("func1");
 			$$.code = $1.code;
 			$$.vars = $1.vars;
 			for(int i = 0; i < $3.vars->size(); ++i){
@@ -119,7 +118,7 @@ func1:	decl SEMICOLON func1
 		}
 	 |	
 		{
-			printf("func12");
+			//printf("func12");
 			$$.code = new stringstream();
 			$$.vars = new vector<Var>();
 		}
@@ -127,7 +126,10 @@ func1:	decl SEMICOLON func1
 
 decl: IDENT decl1 COLON array INTEGER 
 		{
-			printf("decl");
+			//printf("decl");
+			//cout << $1 << endl;
+			//cout << $2.code->str() << endl;
+			//cout << $4.code->str() << endl;
 			$$.code = $2.code;
             $$.type = $2.type;
             $$.length = $2.length;
@@ -178,7 +180,7 @@ decl: IDENT decl1 COLON array INTEGER
 
 decl1:	COMMA IDENT decl1 
 		{
-			printf("decl1");
+			//printf("decl1");
 			$$.code = $3.code;
 			$$.type = $3.type;
 			$$.length = $3.length;
@@ -211,7 +213,7 @@ decl1:	COMMA IDENT decl1
 		}
 	|	
 		{
-			printf("decl12");
+			//printf("decl12");
 			$$.code = new stringstream();
             $$.vars = new vector<Var>();
             $$.type = INT;
@@ -221,7 +223,7 @@ decl1:	COMMA IDENT decl1
 
 array: ARRAY L_SQUARE_BRACKET number R_SQUARE_BRACKET OF 
 		{
-			printf("array");
+			//printf("array");
 			$$.length = $3.length;
 	        $$.vars = new vector<Var>();
 	        $$.code = new stringstream();
@@ -231,7 +233,7 @@ array: ARRAY L_SQUARE_BRACKET number R_SQUARE_BRACKET OF
 	|	
 
 		{
-			printf("array12");
+			//printf("array12");
 	        $$.type = INT;
 	        $$.vars = new vector<Var>();
 	        $$.length = 0;
@@ -241,69 +243,69 @@ array: ARRAY L_SQUARE_BRACKET number R_SQUARE_BRACKET OF
 
 stmt:	asn_stmt 
 		{
-			printf("asn_stmt");
+			//printf("asn_stmt");
 			$$.code = $1.code;
 		}
 
 	|	if_stmt	
 		{
-			printf("if_stmt");
+			//printf("if_stmt");
 			$$.code = $1.code;
 		}
 
 	|	while_stmt 
 		{
-			printf("while_stmt");
+			//printf("while_stmt");
 			$$.code = $1.code;
 		}
 
 	|	do_stmt 
 		{
-			printf("do stmt");
+			//printf("do stmt");
 			$$.code = $1.code;
 		}
 
 	|	read_stmt 
 		{
-			printf("readstmt");
+			//printf("readstmt");
 			$$.code = $1.code;
 		}
 
 	|	write_stmt 
 		{
-			printf("wstmt");
+			//printf("wstmt");
 			$$.code = $1.code;
 		}
 
 	|	cont_stmt 
 		{
-			printf("contstmt");
+			//printf("contstmt");
 			$$.code = $1.code;
 		}
 
 	|	ret_stmt 
 		{
-			printf("ret_stmt");
+			//printf("ret_stmt");
 			$$.code = $1.code;
 		}
 	;
 
 stmt1:	stmt SEMICOLON stmt1 
 		{
-			printf("stmt1");
+			//printf("stmt1");
 			$$.code = $1.code;
 			*($$.code) << $3.code->str();
 		}
 	|	
 		{
-			printf("stmt12");
+			//printf("stmt12");
 			$$.code = new stringstream();
 		}
 	;
 
 asn_stmt: var ASSIGN expr 
 		{
-			printf("asn_stmt");
+			//printf("asn_stmt");
 			$$.code = $1.code;
 			*($$.code) << $3.code->str();
 			if($1.type == INT && $3.type == INT){
@@ -327,7 +329,7 @@ asn_stmt: var ASSIGN expr
 
 if_stmt: IF bool_expr THEN stmt1 else_stmt ENDIF
 		{
-			printf("ifstmt");
+			//printf("ifstmt");
 			$$.code = new stringstream();
 			$$.begin = label();
 			$$.end = label();
@@ -345,13 +347,13 @@ if_stmt: IF bool_expr THEN stmt1 else_stmt ENDIF
 
 else_stmt: ELSE stmt1 
 			{
-				printf("elsestmt");
+				//printf("elsestmt");
 				$$.code = $2.code;
 				$$.begin = label();
 			}
 		|
 			{
-				printf("elsestmt2");
+				//printf("elsestmt2");
 				$$.code = new stringstream();
 				$$.begin = NULL;
 			}
@@ -359,7 +361,7 @@ else_stmt: ELSE stmt1
 
 while_stmt: WHILE bool_expr BEGINLOOP stmt1 ENDLOOP 
 			{
-				printf("whilestmt.");
+				//printf("whilestmt.");
 				$$.code = new stringstream();
 				$$.begin = label();
 				$$.parent = label();
@@ -376,7 +378,7 @@ while_stmt: WHILE bool_expr BEGINLOOP stmt1 ENDLOOP
 
 do_stmt:	DO BEGINLOOP stmt1 ENDLOOP WHILE bool_expr 
 			{
-				printf("dostmt");
+				//printf("dostmt");
 				$$.code = new stringstream();
 				$$.begin = label();
 				$$.parent = label();
@@ -393,7 +395,7 @@ do_stmt:	DO BEGINLOOP stmt1 ENDLOOP WHILE bool_expr
 
 read_stmt: READ var r_stmt 
 			{
-				printf("read_stmt");
+				//printf("read_stmt");
 				$$.code = $2.code;
 				if($2.type == INT){
 					*($$.code) << ".< " << *$2.name << "\n";  
@@ -406,7 +408,7 @@ read_stmt: READ var r_stmt
 
 r_stmt: COMMA var r_stmt 
 		{
-			printf("r_stmt");
+			//printf("r_stmt");
 			$$.code = $2.code;
 			if($2.type == INT){
 				*($$.code) << ".< " << *$2.name << "\n";
@@ -418,14 +420,14 @@ r_stmt: COMMA var r_stmt
 		}
 		|	
 			{
-				printf("r_stmt2");
+				//printf("r_stmt2");
 				$$.code = new stringstream();
 			}
 		; 
 
 write_stmt: WRITE var w_stmt 
 			{
-				printf("write_stmt");
+				//printf("write_stmt");
 				$$.code = $2.code;
 				if($2.type == INT){
 					*($$.code) << ".> " << *$2.name << "\n";
@@ -438,7 +440,7 @@ write_stmt: WRITE var w_stmt
 
 w_stmt: COMMA var w_stmt 
 		{
-			printf("w_stmt diff");
+			//printf("w_stmt diff");
 			$$.code = $2.code;
 			if($2.type == INT){
 				*($$.code) << ".> " << *$2.name << "\n";
@@ -450,14 +452,14 @@ w_stmt: COMMA var w_stmt
 		}
 		|	
 			{
-				printf("w_stmt diff111");
+				//printf("w_stmt diff111");
 				$$.code = new stringstream();
 			}
 		; 
 
 cont_stmt:	CONTINUE 
 			{
-				printf("continue m/;er");
+				//printf("continue m/;er");
 				$$.code = new stringstream();
 				if(airpod_stack.size() <= 0){
 					yyerror("Error. invalid use of continue.");
@@ -470,7 +472,7 @@ cont_stmt:	CONTINUE
 
 ret_stmt:	RETURN expr 
 			{
-				printf("return pikachu");
+				//printf("return pikachu");
 				$$.name = $2.name;
 				$$.code = $2.code;
 				*($$.code) << "ret " << *$$.name << "\n";
@@ -480,7 +482,7 @@ ret_stmt:	RETURN expr
 
 bool_expr:	and_expr or_expr 
 			{
-				printf("andor");
+				//printf("andor");
 				$$.code = $2.code;
 				*($$.code) << $2.code->str();
 				if($2.name != NULL && $2.operator1 != NULL){
@@ -495,12 +497,12 @@ bool_expr:	and_expr or_expr
 
 or_expr:	OR and_expr or_expr 
 			{
-				printf("or expr");
+				//printf("or expr");
 				exp($$, $2, $3, "||");
 			}
 		|	
 			{
-				printf("or_expr2");
+				//printf("or_expr2");
 				$$.code = new stringstream();
 				$$.operator1 = NULL;
 			}
@@ -508,7 +510,7 @@ or_expr:	OR and_expr or_expr
 
 and_expr:	rel_expr and_expr1	
 			{
-				printf("and_expr");
+				//printf("and_expr");
 				$$.code = $1.code;
 				*($$.code) << $2.code->str();
 				if($2.name != NULL && $2.operator1 != NULL){
@@ -523,12 +525,12 @@ and_expr:	rel_expr and_expr1
 
 and_expr1:	AND rel_expr and_expr1 
 			{
-				printf("wtfand_expr");
+				//printf("wtfand_expr");
 				exp($$, $2, $3, "&&");
 			}
 		|	
 			{
-				printf("wtfand_expr2");
+				//printf("wtfand_expr2");
 				$$.code = new stringstream();
 				$$.operator1 = NULL;
 			}
@@ -536,7 +538,7 @@ and_expr1:	AND rel_expr and_expr1
 
 rel_expr:	rel_expr1	
 			{
-				printf("rel_expr1 waterbottle.");
+				//printf("rel_expr1 waterbottle.");
 				$$.code = $1.code;
 				$$.name = $1.name;
 			}
@@ -550,7 +552,7 @@ rel_expr:	rel_expr1
 
 rel_expr1:	expr comp expr 
 			{
-				printf("rel1 a");
+				//printf("rel1 a");
 				$$.code = $1.code;
 				*($$.code) << $2.code->str();
 				*($$.code) << $3.code->str();
@@ -559,21 +561,21 @@ rel_expr1:	expr comp expr
 			}
 		|	TRUE 
 			{
-				printf("rel1 b");
+				//printf("rel1 b");
 				$$.code = new stringstream();
 				$$.name = new string();
 				*$$.name = "1";
 			}
 		|	FALSE 
 			{
-				printf("rel1 c");
+				//printf("rel1 c");
 				$$.code = new stringstream();
 				$$.name = new string();
 				*$$.name = "0";
 			}
 		|	L_PAREN bool_expr R_PAREN 
 			{
-				printf("rel1 d");
+				//printf("rel1 d");
 				$$.code = $2.code;
 				$$.name = $2.name;
 			}
@@ -581,42 +583,42 @@ rel_expr1:	expr comp expr
 
 comp:	EQ 
 		{
-			printf("comp b");
+			//printf("comp b");
 			$$.code = new stringstream();
 			$$.operator1 = new string();
 			*$$.operator1 = "==";
 		}
 	|	NEQ 
 		{
-			printf("comp c");
+			//printf("comp c");
 			$$.code = new stringstream();
 			$$.operator1 = new string();
 			*$$.operator1 = "!=";
 		}
 	|	LT 	
 		{
-			printf("comp d");
+			//printf("comp d");
 			$$.code = new stringstream();
 			$$.operator1 = new string();
 			*$$.operator1 = "<";
 		}
 	|	GT 	
 		{
-			printf("comp e");
+			//printf("comp e");
 			$$.code = new stringstream();
 			$$.operator1 = new string();
 			*$$.operator1 = ">";
 		}
 	|	GTE	
 		{
-			printf("comp f");
+			//printf("comp f");
 			$$.code = new stringstream();
 			$$.operator1 = new string();
 			*$$.operator1 = ">=";
 		}
 	|	LTE 
 		{
-			printf("comp g");
+			//printf("comp g");
 			$$.code = new stringstream();
 			$$.operator1 = new string();
 			*$$.operator1 = "<=";
@@ -625,7 +627,7 @@ comp:	EQ
 
 expr:	multi_expr expr1 
 		{
-			printf("expr");
+			//printf("expr");
 			$$.code = $1.code;
 			*($$.code) << $2.code->str();
 			if($2.name != NULL && $2.operator1 != NULL){
@@ -641,17 +643,17 @@ expr:	multi_expr expr1
 
 expr1:		ADD multi_expr expr1 
 			{
-				printf("expr1 a");
+				//printf("expr1 a");
 				exp($$, $2, $3, "+");
 			}
 		|	SUB multi_expr expr1 
 			{
-				printf("expr1 b");
+				//printf("expr1 b");
 				exp($$, $2, $3, "-");
 			} 
 		|	
 			{
-				printf("expr1 c");
+				//printf("expr1 c");
 				$$.code = new stringstream();
 				$$.operator1 = NULL;
 			}	
@@ -659,7 +661,7 @@ expr1:		ADD multi_expr expr1
 
 multi_expr:		term multi_expr1 
 			{
-				printf("mult");
+				//printf("mult");
 				$$.code = $1.code;
 				*($$.code) << $2.code->str();
 				if($2.name != NULL && $2.operator1 != NULL){
@@ -674,22 +676,22 @@ multi_expr:		term multi_expr1
 
 multi_expr1:	MULT term multi_expr1 
 				{
-					printf("mult1 a");
+					//printf("mult1 a");
 					exp($$, $2, $3, "*");
 				}
 		|		DIV term multi_expr1 
 				{
-					printf("mult1 b");
+					//printf("mult1 b");
 					exp($$, $2, $3, "/");
 				}
 		|		MOD term multi_expr1 
 				{
-					printf("mult1 c");
+					//printf("mult1 c");
 					exp($$, $2, $3, "%");
 				}
 		|		
 			{
-				printf("mult1 d");
+				//printf("mult1 d");
 				$$.code = new stringstream();
 				$$.operator1 = NULL;
 			}
@@ -697,13 +699,13 @@ multi_expr1:	MULT term multi_expr1
 
 term:	term2 
 		{
-			printf("term a");
+			//printf("term a");
 			$$.code = $1.code;
 			$$.name = $1.name;
 		}
 	|	SUB term2 
 		{
-			printf("term b");
+			//printf("term b");
 			$$.code = $2.code;
 			$$.name = temp();
 			string temp = "-1";
@@ -711,7 +713,7 @@ term:	term2
 		}
 	|	IDENT L_PAREN term3 R_PAREN 
 		{
-			printf("term c");
+			//printf("term c");
 			$$.code = $3.code;
 			$$.name = temp();
 			*($$.code) << dot($$.name) << "call " << $1 << ", " << *$$.name << "\n";
@@ -722,14 +724,14 @@ term:	term2
 
 term2:		var 
 		{
-			printf("term2 a");
+			//printf("term2 a");
 			$$.code = $1.code;
 			$$.name = $1.name;
 			$$.index = $1.index;
 		}
 		|	number 
 			{
-				printf("term2 b");
+				//printf("term2 b");
 
 				$$.code = $1.code;
 				$$.name = $1.name;
@@ -737,7 +739,7 @@ term2:		var
 			}
 		|	L_PAREN expr R_PAREN 
 			{
-				printf("term2 c");
+				//printf("term2 c");
 				$$.code = $2.code;
 				$$.name = $2.name;
 			}
@@ -745,14 +747,14 @@ term2:		var
 
 term3:		expr COMMA term3 
 		{
-			printf("term3 a");
+			//printf("term3 a");
 			$$.code = $1.code;
 			*($$.code) << $3.code->str();
 			*($$.code) << "param " << *$1.name;
 		}
 		|	expr 
 			{
-				printf("term3 b");
+				//printf("term3 b");
 				$$.code = $1.code;
 				*($$.code) << new stringstream();
 				*($$.code) << "param " << *$1.name;
@@ -760,7 +762,7 @@ term3:		expr COMMA term3
 			}
 		|	
 			{
-				printf("term3 c");
+				//printf("term3 c");
 				$$.code = new stringstream();
 			}
 		;
@@ -768,7 +770,7 @@ term3:		expr COMMA term3
 
 var:	IDENT var2 
 	{
-		printf("var");
+		//printf("var");
 		$$.code = $2.code;
 		$$.type = $2.type;
 		string tonystark = $1;
@@ -805,7 +807,7 @@ var2:	L_SQUARE_BRACKET expr R_SQUARE_BRACKET {
 		}
 	|
 		{
-			printf("var2");
+			//printf("var2");
 			$$.code = new stringstream();
 			$$.index = NULL;
 			$$.name = NULL;
@@ -815,7 +817,7 @@ var2:	L_SQUARE_BRACKET expr R_SQUARE_BRACKET {
 
 number:	NUMBER 
 		{
-			printf("number");
+			//printf("number");
 			$$.code = new stringstream();
 			$$.name = new string();
 			*$$.name = itos($1);
