@@ -35,7 +35,7 @@ inv_id_unscr    ({identifier}|{digit})+_+
 %%
   /*** Rules  ***/
   /* Resereved Words */
-"function"     { currPos += yyleng; return FUNCTION; }
+"function"     { currPos += yyleng; printf("FUNCTION"); return FUNCTION; }
 "beginparams"  { currPos += yyleng; return BEGIN_PARAMS; }
 "endparams"    { currPos += yyleng; return END_PARAMS; }
 "beginlocals"  { currPos += yyleng; return BEGIN_LOCALS; }

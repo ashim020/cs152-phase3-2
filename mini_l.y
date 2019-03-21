@@ -55,7 +55,7 @@ bool success = true;
 %%
 prog:	func prog 
 		{	
-			print("prog");
+			printf("prog");
 			$$.code = $1.code;
 			*($$.code) << $2.code->str();
 			if(!pokerchips){
@@ -65,8 +65,9 @@ prog:	func prog
 		}
 	|	
 		{	
-			print("prog2");
+			printf("prog2mjgmjyj");
 			$$.code = new stringstream();
+			printf("temr");
 		}
 	;
 
@@ -230,7 +231,7 @@ array: ARRAY L_SQUARE_BRACKET number R_SQUARE_BRACKET OF
 	|	
 
 		{
-			printf(array12);
+			printf("array12");
 	        $$.type = INT;
 	        $$.vars = new vector<Var>();
 	        $$.length = 0;
@@ -289,7 +290,7 @@ stmt:	asn_stmt
 
 stmt1:	stmt SEMICOLON stmt1 
 		{
-			printf("stmt1")
+			printf("stmt1");
 			$$.code = $1.code;
 			*($$.code) << $3.code->str();
 		}
@@ -327,9 +328,9 @@ asn_stmt: var ASSIGN expr
 if_stmt: IF bool_expr THEN stmt1 else_stmt ENDIF
 		{
 			printf("ifstmt");
-			$$.end = label();
-			$$.begin = label();
 			$$.code = new stringstream();
+			$$.begin = label();
+			$$.end = label();
 			*($$.code) << $2.code->str() << "?:= " << *$$.begin << ", " <<  *$2.name << "\n";
 			if($5.begin != NULL){
 				*($$.code) << ":= " << *$5.begin << "\n";
@@ -350,7 +351,7 @@ else_stmt: ELSE stmt1
 			}
 		|
 			{
-				prontf("elsestmt2");
+				printf("elsestmt2");
 				$$.code = new stringstream();
 				$$.begin = NULL;
 			}
@@ -751,7 +752,7 @@ term3:		expr COMMA term3
 		}
 		|	expr 
 			{
-				term3 b
+				printf("term3 b");
 				$$.code = $1.code;
 				*($$.code) << new stringstream();
 				*($$.code) << "param " << *$1.name;
