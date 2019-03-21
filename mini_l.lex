@@ -12,8 +12,9 @@
   /*** Definitions ***/
 
 %{
+ #include "mini_l.h"
  #include "y.tab.h"
-
+ #include <string.h>
  #include <stdio.h>
  #include <stdlib.h>
  #include <unistd.h>

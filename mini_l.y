@@ -1,12 +1,7 @@
-%{
-#include <stdio.h>
-#include <stdlib.h>
-#include <vector>
-#include <iostream>
-#include <vector>
-#include <map>
-#include <stack>
 
+%{
+#include "mini_l.h"
+#include <sstream>
 int yyerror (const char* s);
 int yylex (void);
 
@@ -16,7 +11,7 @@ bool missing_main = false;
 string itos(int);
 string ctos(char*);
 void map_push(string, Var);
-void map_find(string, Var);
+bool map_find(string);
 map<string, Var> vmap;
 int temp_count = 0;
 int label_count = 0;
@@ -27,49 +22,20 @@ string syn_create(string*, string*, string*, string);
 string dot(string *);
 void exp(Terminal &, Terminal, Terminal, string);
 stack<airpod> airpod_stack;
+bool pokerchips = false;
+stringstream* igota21;
+FILE *kris;
+bool success = true;
 %}
 
-struct airpod{
-        string *begin;
-        string *parent;
-        string *end;
-    };
-
-enum Type {INT,INT_ARR,FUNC};
-
-struct Var{
-    string *name;
-    string *value;
-    Type type;
-    int length;
-    string *index;
-} ;
-
-map<string, Var> var_map;
-
-struct Terminal{
-   stringstream *code;
-   string *name;
-   string *value;
-   string *operator;
-   string *begin;
-   string *parent;
-   string *end;
-   Type type;
-   int length;
-   string *index;
-   vector<string> *ids;
-   vector<Var> *vars; 
-};
-
-//Bison Declarations
-
-%define parse.error verbose
-
 %union{
-	int  val;
+	int val;
 	char* cval;
+	patek patek;
+	Terminal Terminal;
 }
+
+%error-verbose
 
 %start	prog
 %token	FUNCTION BEGIN_PARAMS END_PARAMS BEGIN_LOCALS END_LOCALS BEGIN_BODY END_BODY INTEGER ARRAY OF IF THEN ENDIF ELSE WHILE DO FOREACH IN BEGINLOOP ENDLOOP CONTINUE READ WRITE TRUE FALSE SEMICOLON COLON COMMA L_PAREN R_PAREN L_SQUARE_BRACKET R_SQUARE_BRACKET RETURN
@@ -81,15 +47,18 @@ struct Terminal{
 %left AND OR
 %right ASSIGN
 
+%type <patek> prog
+%type <Terminal> func func1 decl decl1 array stmt stmt1 asn_stmt if_stmt else_stmt while_stmt do_stmt read_stmt r_stmt write_stmt w_stmt cont_stmt ret_stmt bool_expr or_expr and_expr and_expr1 rel_expr rel_expr1 comp expr expr1 multi_expr multi_expr1 term term2 term3 var var2 number ident
+
 %%
 prog:	func prog 
 		{
 			$$.code = $1.code;
 			*($$.code) << $2.code->str();
-			if(!no_main){
+			if(!pokerchips){
 				yyerror("Error. no main.");
 			}
-			all_code = $$.code;
+			igota21 = $$.code;
 		}
 	|	
 		{
@@ -108,15 +77,28 @@ func: 	FUNCTION ident SEMICOLON BEGIN_PARAMS func1 END_PARAMS BEGIN_LOCALS func1
 			for(int i = 0; i < $5.vars->size(); ++i){
 				if((*$5.vars)[i].type == INT_ARR){
 					yyerror("Error in passing in to array.");
-				} else if ((*5.vars)[i].type == INT){
+				} else if ((*$5.vars)[i].type == INT){
 					*($$.code) << "= " << *((*$5.vars)[i].name) << ", " << "$"<< itos(i) << "\n";
 				} else {
 					yyerror("Error. passing in invalid type.");
 				}
 			}
-			*($$.code) << $11.code->str() << $13.code->str();
+			*($$.code) << $11.code->str() << *($$.code) << "end func\n";
 		}
 			;
+
+ident: IDENT 
+		{
+			string temp = $1;
+			Var appleiphonexs = Var();
+			appleiphonexs.type = FUNC;
+			if(!map_find(temp)){
+				map_push(temp, appleiphonexs);
+			}
+			$$.name = new string();
+			*$$.name = temp;
+		}
+		;
 
 func1:	decl SEMICOLON func1 
 		{
@@ -134,7 +116,7 @@ func1:	decl SEMICOLON func1
 		}
 	;
 
-decl: ident decl1 COLON array INTEGER 
+decl: IDENT decl1 COLON array INTEGER 
 		{
 			$$.code = $2.code;
             $$.type = $2.type;
@@ -143,10 +125,6 @@ decl: ident decl1 COLON array INTEGER
 
             //=================
             // if there is an issue. its right here. the stringstream concat.
-            $$.code << $4.code;
-            $$.type << $4.type;
-            $$.length << $4.length;
-            $$.vars << $4.vars;
 			//=================
 
             Var v = Var();
@@ -188,7 +166,7 @@ decl: ident decl1 COLON array INTEGER
 		}
 	;
 
-decl1:	COMMA ident decl1 
+decl1:	COMMA IDENT decl1 
 		{
 			$$.code = $3.code;
 			$$.type = $3.type;
@@ -203,9 +181,9 @@ decl1:	COMMA ident decl1
 
 			if($3.type == INT_ARR){
 				*($$.code) << ".[] " << $2 << ", " << $3.length << "\n";
-				string s = %2;
-				if(!check_maps(s)){
-					in_map(s,v);
+				string s = $2;
+				if(!map_find(s)){
+					map_push(s,v);
 				} else {
 					string tmp = "Error. (" + s + ") is defined more than once.";
 					yyerror(tmp.c_str());
@@ -231,7 +209,7 @@ decl1:	COMMA ident decl1
 
 array: ARRAY L_SQUARE_BRACKET number R_SQUARE_BRACKET OF 
 		{
-			$$.length = $3;
+			$$.length = $3.length;
 	        $$.vars = new vector<Var>();
 	        $$.code = new stringstream();
 	        $$.type = INT_ARR;
@@ -291,7 +269,7 @@ stmt:	asn_stmt
 stmt1:	stmt SEMICOLON stmt1 
 		{
 			$$.code = $1.code;
-			*($$.code) << $3.code->();
+			*($$.code) << $3.code->str();
 		}
 	|	
 		{
@@ -315,7 +293,7 @@ asn_stmt: var ASSIGN expr
             else if($1.type == INT_ARR && $3.type == INT_ARR){
                 string *tmp = temp();
                 *($$.code) << dot(tmp) << syn_create(tmp, $3.name, $3.index, "=[]");
-                *($$.code) << syn_create($1.value, "[]=", $1.index, tmp);
+                *($$.code) << syn_create($1.value, $1.index, tmp, "[]=");
             }
             else{
                 yyerror("Error: expression is null.");
@@ -329,13 +307,13 @@ if_stmt: IF bool_expr THEN stmt1 else_stmt ENDIF
 			$$.code = new stringstream();
 			*($$.code) << $2.code->str() << "?:= " << *$$.begin << ", " <<  *$2.name << "\n";
 			if($5.begin != NULL){
-				*($$.code) << ":= " + *$5.begin + "\n";
-			 	*($$.code) << ": " + *($$.begin) + "\n" << $4.code->str() << ":= "+ *($$.end) + "\n";
-                *($$.code) << ": " + *($5.begin) + "\n" << $5.code->str();
+				*($$.code) << ":= " << *$5.begin << "\n";
+			 	*($$.code) << ": " << *($$.begin) << "\n" << $4.code->str() << ":= "+ *($$.end) + "\n";
+                *($$.code) << ": " << *($5.begin) << "\n" << $5.code->str();
 			} else {
-				*($$.code) << ": " + *($$.end) + "\n" << ": " + *($$.begin) + "\n"  << $4.code->str();
+				*($$.code) << ": " << *($$.end) << "\n" << ": " << *($$.begin) << "\n"  << $4.code->str();
 			}
-			($$.code) << ": " + *($$.end) + "\n";
+			*($$.code) << ": " << *($$.end) << "\n";
 		}
 		;
 
@@ -378,7 +356,7 @@ do_stmt:	DO BEGINLOOP stmt1 ENDLOOP WHILE bool_expr
 				p.begin = $$.begin;
 				p.end = $$.end;
 				airpod_stack.push(p);
-				*($$.code) << ": " << *($$.begin) << "\n" << $3.code->str() << ": " << *($$.parent) << "\n" << $6.code->str() << "?:= " << *$$.begin << ", " << *6.name << "\n" << ": " << *($$.end) << "\n";
+				*($$.code) << ": " << *($$.begin) << "\n" << $3.code->str() << ": " << *($$.parent) << "\n" << $6.code->str() << "?:= " << *$$.begin << ", " << $6.name << "\n" << ": " << *($$.end) << "\n";
 			    airpod_stack.pop();
 			}
 		;
@@ -418,7 +396,7 @@ write_stmt: WRITE var w_stmt
 				if($2.type == INT){
 					*($$.code) << ".> " << *$2.name << "\n";
 				} else {
-					*($$.code) << ".[]> " << *$2.value << ", " << *$2.index << "\n"
+					*($$.code) << ".[]> " << *$2.value << ", " << *$2.index << "\n";
 				}
 				*($$.code) << $3.code->str();
 			}
@@ -466,12 +444,12 @@ bool_expr:	and_expr or_expr
 			{
 				$$.code = $2.code;
 				*($$.code) << $2.code->str();
-				if($2.name != NULL && $2.operator != NULL){
+				if($2.name != NULL && $2.operator1 != NULL){
 					$$.name = temp();
-					*($$.code) << dot($$.name) << syn_create($$.name, $1.name, $2.name, *$2.operator); 
+					*($$.code) << dot($$.name) << syn_create($$.name, $1.name, $2.name, *$2.operator1); 
 				} else {
 					$$.name = $1.name;
-					$$.operator = $1.operator;
+					$$.operator1 = $1.operator1;
 				}
 			}
 		;
@@ -483,7 +461,7 @@ or_expr:	OR and_expr or_expr
 		|	
 			{
 				$$.code = new stringstream();
-				$$.operator = NULL;
+				$$.operator1 = NULL;
 			}
 		;
 
@@ -491,12 +469,12 @@ and_expr:	rel_expr and_expr1
 			{
 				$$.code = $1.code;
 				*($$.code) << $2.code->str();
-				if($2.name != NULL && $2.operator != NULL){
+				if($2.name != NULL && $2.operator1 != NULL){
 					$$.name = temp();
-					*($$.code) << dot($$.name) << syn_create($$.name, $1.name, $2.name, *$2.operator);
+					*($$.code) << dot($$.name) << syn_create($$.name, $1.name, $2.name, *$2.operator1);
 				} else {
 					$$.name = $1.name;
-					$$.operator = $1.operator;
+					$$.operator1 = $1.operator1;
 				}
 			}
 		;
@@ -508,7 +486,7 @@ and_expr1:	AND rel_expr and_expr1
 		|	
 			{
 				$$.code = new stringstream();
-				$$.operator = NULL;
+				$$.operator1 = NULL;
 			}
 		;
 
@@ -531,7 +509,7 @@ rel_expr1:	expr comp expr
 				*($$.code) << $2.code->str();
 				*($$.code) << $3.code->str();
 				$$.name = temp();
-				*($$.code) << dot($$.name) << syn_create($$.name, $1.name, $3.name, *$2.operator);
+				*($$.code) << dot($$.name) << syn_create($$.name, $1.name, $3.name, *$2.operator1);
 			}
 		|	TRUE 
 			{
@@ -555,38 +533,38 @@ rel_expr1:	expr comp expr
 comp:	EQ 
 		{
 			$$.code = new stringstream();
-			$$.operator = new string();
-			*$$.operator = "==";
+			$$.operator1 = new string();
+			*$$.operator1 = "==";
 		}
 	|	NEQ 
 		{
 			$$.code = new stringstream();
-			$$.operator = new string();
-			*$$.operator = "!=";
+			$$.operator1 = new string();
+			*$$.operator1 = "!=";
 		}
 	|	LT 	
 		{
 			$$.code = new stringstream();
-			$$.operator = new string();
-			*$$.operator = "<";
+			$$.operator1 = new string();
+			*$$.operator1 = "<";
 		}
 	|	GT 	
 		{
 			$$.code = new stringstream();
-			$$.operator = new string();
-			*$$.operator = ">";
+			$$.operator1 = new string();
+			*$$.operator1 = ">";
 		}
 	|	GTE	
 		{
 			$$.code = new stringstream();
-			$$.operator = new string();
-			*$$.operator = ">=";
+			$$.operator1 = new string();
+			*$$.operator1 = ">=";
 		}
 	|	LTE 
 		{
 			$$.code = new stringstream();
-			$$.operator = new string();
-			*$$.operator = "<=";
+			$$.operator1 = new string();
+			*$$.operator1 = "<=";
 		}
 	;
 
@@ -594,12 +572,12 @@ expr:	multi_expr expr1
 		{
 			$$.code = $1.code;
 			*($$.code) << $2.code->str();
-			if($2.name != NULL && $2.operator != NULL){
+			if($2.name != NULL && $2.operator1 != NULL){
 				$$.name = temp();
-				*($$.code)<< dot($$.name) << syn_create($$.name, $1.name, $2.name, *$2.operator);
+				*($$.code)<< dot($$.name) << syn_create($$.name, $1.name, $2.name, *$2.operator1);
 			} else{
 				$$.name = $1.name;
-				$$.operator = $1.operator;
+				$$.operator1 = $1.operator1;
 			}
 			$$.type = INT;
 		}
@@ -616,7 +594,7 @@ expr1:		ADD multi_expr expr1
 		|	
 			{
 				$$.code = new stringstream();
-				$$.operator = NULL;
+				$$.operator1 = NULL;
 			}	
 		;
 
@@ -624,12 +602,12 @@ multi_expr:		term multi_expr1
 			{
 				$$.code = $1.code;
 				*($$.code) << $2.code->str();
-				if($2.name != NULL && $2.operator != NULL){
+				if($2.name != NULL && $2.operator1 != NULL){
 					$$.name = temp();
-					*($$.code)<< dot($$.name)<< syn_create($$.name, $1.name, $2.name, *$2.operator);
+					*($$.code)<< dot($$.name)<< syn_create($$.name, $1.name, $2.name, *$2.operator1);
 				} else {
 					$$.name = $1.name;
-					$$.operator = $1.operator;
+					$$.operator1 = $1.operator1;
 				}
 			}
 				;	
@@ -649,7 +627,7 @@ multi_expr1:	MULT term multi_expr1
 		|		
 			{
 				$$.code = new stringstream();
-				$$.op = NULL;
+				$$.operator1 = NULL;
 			}
 		;
 
@@ -665,7 +643,7 @@ term:	term2
 			string temp = "-1";
 			*($$.code)<< dot($$.name) << syn_create($$.name, $2.name, &temp, "*");
 		}
-	|	ident L_PAREN term3 R_PAREN 
+	|	IDENT L_PAREN term3 R_PAREN 
 		{
 			$$.code = $3.code;
 			$$.name = temp();
@@ -698,13 +676,13 @@ term3:		expr COMMA term3
 		{
 			$$.code = $1.code;
 			*($$.code) << $3.code->str();
-			*($$.code) << "param " << *$
+			*($$.code) << "param " << *$1.name;
 		}
 		|	expr 
 			{
 				$$.code = $1.code;
-				*($$.code) << new stringstream()->str();
-				*($$.code) << "param " << *$ 
+				*($$.code) << new stringstream();
+				*($$.code) << "param " << *$1.name;
 
 			}
 		|	
@@ -718,11 +696,11 @@ var:	IDENT var2
 	{
 		$$.code = $2.code;
 		$$.type = $2.type;
-		string temp = $1;
-		dne(temp);
-		if(dne(temp) && var_map[temp].type != $2.type){
+		string tonystark = $1;
+		dne(tonystark);
+		if(map_find(tonystark) && var_map[tonystark].type != $2.type){
 			if($2.type == INT_ARR){
-				string errmsg = "Error: " + temp + " is not array type";
+				string errmsg = "Error: " + tonystark + " is not array type";
 				yyerror(errmsg.c_str());
 			} else if($2.type == INT){
 				string errmsg = "Error: no index specified.";
@@ -735,9 +713,9 @@ var:	IDENT var2
 		} else {
 			$$.index =$2.index;
 			$$.name = temp();
-			string* temp = new string();
-			*temp = $1;
-			*($$.code) << dot($$.name) << syn_create($$.name, temp, $2.index, "=[]");
+			string* pepperpots = new string();
+			*pepperpots = $1;
+			*($$.code) << dot($$.name) << syn_create($$.name, pepperpots, $2.index, "=[]");
 			$$.value = new string();
 			*$$.value = $1;
 		}
@@ -748,7 +726,7 @@ var2:	L_SQUARE_BRACKET expr R_SQUARE_BRACKET {
 			$$.code = $2.code;
 			$$.name = NULL;
 			$$.index = $2.name;
-			$$.ype = INT_ARR;
+			$$.type = INT_ARR;
 		}
 	|
 		{
@@ -764,6 +742,7 @@ number:	NUMBER
 			$$.code = new stringstream();
 			$$.name = new string();
 			*$$.name = itos($1);
+			$$.length = $1;
 		}
 
 %%
@@ -815,20 +794,19 @@ string* temp() {
 	return temp;
 }
 
-void exp(Terminal &a, Terminal b, Terminal c, string 
-){
+void exp(Terminal &a, Terminal b, Terminal c, string d){
 	a.code = b.code;
 	*(a.code) << c.code->str();
-	if(c.operator == NULL){
+	if(c.operator1 == NULL){
 		a.name = b.name;
-		a.operaator = new string();
-		*a.operattor = operator;
+		a.operator1 = new string();
+		*a.operator1 = d;
 	} else {
 		a.name = temp();
-		a.op = new string();
-		*a.operator = operator;
+		a.operator1 = new string();
+		*a.operator1 = d;
 
-		*(a.code) << dot(a.name) << syn_create(a.name, b.name, c.name, *c.operator);
+		*(a.code) << dot(a.name) << syn_create(a.name, b.name, c.name, *c.operator1);
 	}
 }
 
@@ -841,9 +819,9 @@ string* label() {
 	return temp;
 }
 
-string syn_create(string *name, string *first, string *second, string operator) 
+string syn_create(string *name, string *first, string *second, string operator1) 
 {
-	return (operator == "!") ? operator + " " + *name + ", " + *first + "\n" : operator + " " + *name + ", " + *first + ", "+ *second +"\n"
+	return (operator1 == "!") ? operator1 + " " + *name + ", " + *first + "\n" : operator1 + " " + *name + ", " + *first + ", "+ *second +"\n";
 }
 
 string dot(string *s)
@@ -851,25 +829,28 @@ string dot(string *s)
 	return ". " + *s + "\n"; 
 }
 
-int main (int argc, char ** argv)
-{
-  if(argc >= 2)
-  {
-     yyin = fopen(argv[1], "r");
-     if(yyin == NULL)
-     {
-        yyin = stdin;
-     }
-  }
-  else
-  {
-     yyin = stdin;
-  }
-  yyparse();
+int main(int argc, char **argv) {
 
-  return 0;
+    if ( (argc > 1) && (kris = fopen(argv[1],"r")) == NULL){
+        printf("syntax: %s filename\n", argv[0]);
+        return 1;
+    }
+
+    yyparse();
+
+    if(success){
+        ofstream file;
+        file.open("mil_code.mil");
+        file << igota21->str();
+        file.close();
+    }
+    else{
+        cout << "**Errors exist, fix to compile code**" << endl;
+    }
+
+
+    return 0;
 }
-
 int yyerror(const char *s)
 {
 	extern int currLine, currPos;
@@ -878,6 +859,6 @@ int yyerror(const char *s)
 
   	//printf("Syntax error at line %d: invalid %s", currLine, yytext);
   	printf("At line %d: %s\n",currLine,s);
-
+  	success = false;
   	exit(1);
 }
