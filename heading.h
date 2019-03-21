@@ -14,10 +14,6 @@
 
 using namespace std;
 
-struct patek{
-    stringstream *code;
-  };
-
 struct airpod{
       string *begin;
       string *parent;
@@ -34,7 +30,7 @@ struct Var{
     string *index;
 };
 
-map<string, Var> var_map;
+// map<string, Var> vmap;
 
 struct Terminal{ 
    stringstream *code;

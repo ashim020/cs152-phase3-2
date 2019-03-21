@@ -10,9 +10,10 @@
  */
 
   /*** Definitions ***/
+%option noinput nounput noyywrap
 
 %{
- #include "mini_l.h"
+ #include "heading.h"
  #include "y.tab.h"
  #include <string.h>
  #include <stdio.h>

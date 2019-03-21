@@ -1,11 +1,10 @@
 
 %{
-#include "mini_l.h"
+#include "heading.h"
 #include <sstream>
 int yyerror (const char* s);
 int yylex (void);
 
-FILE * yyin;
 //initially assume there is a main.
 bool missing_main = false;
 string itos(int);
@@ -31,8 +30,11 @@ bool success = true;
 %union{
 	int val;
 	char* cval;
-	patek patek;
-	Terminal Terminal;
+	struct {
+    stringstream *code;
+	} patek;
+
+	struct Terminal Terminal;
 }
 
 %error-verbose
@@ -83,7 +85,7 @@ func: 	FUNCTION ident SEMICOLON BEGIN_PARAMS func1 END_PARAMS BEGIN_LOCALS func1
 					yyerror("Error. passing in invalid type.");
 				}
 			}
-			*($$.code) << $11.code->str() << *($$.code) << "end func\n";
+			*($$.code) << $11.code->str() << "end func\n";
 		}
 			;
 
@@ -698,7 +700,7 @@ var:	IDENT var2
 		$$.type = $2.type;
 		string tonystark = $1;
 		dne(tonystark);
-		if(map_find(tonystark) && var_map[tonystark].type != $2.type){
+		if(map_find(tonystark) && vmap[tonystark].type != $2.type){
 			if($2.type == INT_ARR){
 				string errmsg = "Error: " + tonystark + " is not array type";
 				yyerror(errmsg.c_str());
@@ -838,7 +840,8 @@ int main(int argc, char **argv) {
 
     yyparse();
 
-    if(success){
+    if(success)
+    {
         ofstream file;
         file.open("mil_code.mil");
         file << igota21->str();
