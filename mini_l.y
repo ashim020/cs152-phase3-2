@@ -1,6 +1,11 @@
 %{
 #include <stdio.h>
 #include <stdlib.h>
+#include <vector>
+#include <iostream>
+#include <vector>
+#include <map>
+#include <stack>
 
 int yyerror (const char* s);
 int yylex (void);
@@ -20,8 +25,15 @@ string* temp();
 string* label();
 string syn_create(string*, string*, string*, string);
 string dot(string *);
-
+void exp(Terminal &, Terminal, Terminal, string);
+stack<airpod> airpod_stack;
 %}
+
+struct airpod{
+        string *begin;
+        string *parent;
+        string *end;
+    };
 
 enum Type {INT,INT_ARR,FUNC};
 
@@ -317,7 +329,7 @@ if_stmt: IF bool_expr THEN stmt1 else_stmt ENDIF
 			$$.code = new stringstream();
 			*($$.code) << $2.code->str() << "?:= " << *$$.begin << ", " <<  *$2.name << "\n";
 			if($5.begin != NULL){
-				*($$.code) << go_to($5.begin);
+				*($$.code) << ":= " + *$5.begin + "\n";
 			 	*($$.code) << ": " + *($$.begin) + "\n" << $4.code->str() << ":= "+ *($$.end) + "\n";
                 *($$.code) << ": " + *($5.begin) + "\n" << $5.code->str();
 			} else {
@@ -341,11 +353,34 @@ else_stmt: ELSE stmt1
 
 while_stmt: WHILE bool_expr BEGINLOOP stmt1 ENDLOOP 
 			{
-				$$.parent = $3
+				$$.code = new stringstream();
+				$$.begin = label();
+				$$.parent = label();
+				$$.end = label();
+				airpod p = airpod();
+				p.parent = $$.parent;
+				p.begin = $$.begin;
+				p.end = $$.end;
+				airpod_stack.push(p);
+				*($$.code) << ": " << *($$.parent) << "\n" << $2.code->str() << "?:= " << *$$.begin << ", " << *$2.name << "\n" << ":=" << *($$.end) << "\n" << ": " << *($$.begin) << "\n" << $4.code->str() << ":=" << *($$.parent) << "\n" << ": " << *($$.end) << "\n";
+                airpod_stack.pop();
 			}
 			;
 
-do_stmt:	DO BEGINLOOP stmt1 ENDLOOP WHILE bool_expr {printf("do_stmt -> DO BEGINLOOP stmt1 ENDLOOP WHILE bool_expr\n");}
+do_stmt:	DO BEGINLOOP stmt1 ENDLOOP WHILE bool_expr 
+			{
+				$$.code = new stringstream();
+				$$.begin = label();
+				$$.parent = label();
+				$$.end = label();
+				airpod p = airpod();
+				p.parent = $$.parent;
+				p.begin = $$.begin;
+				p.end = $$.end;
+				airpod_stack.push(p);
+				*($$.code) << ": " << *($$.begin) << "\n" << $3.code->str() << ": " << *($$.parent) << "\n" << $6.code->str() << "?:= " << *$$.begin << ", " << *6.name << "\n" << ": " << *($$.end) << "\n";
+			    airpod_stack.pop();
+			}
 		;
 
 read_stmt: READ var r_stmt 
@@ -409,10 +444,10 @@ w_stmt: COMMA var w_stmt
 cont_stmt:	CONTINUE 
 			{
 				$$.code = new stringstream();
-				if(loop_stack.size() <= 0){
+				if(airpod_stack.size() <= 0){
 					yyerror("Error. invalid use of continue.");
 				} else {
-					Loop cont = loop_stack.top();
+					airpod cont = airpod_stack.top();
 					*($$.code) << ":= " << *cont.parent << "\n";
 				}
 			}
@@ -441,7 +476,10 @@ bool_expr:	and_expr or_expr
 			}
 		;
 
-or_expr:	OR and_expr or_expr {printf("or_expr -> OR and_expr or_expr\n");}
+or_expr:	OR and_expr or_expr 
+			{
+				exp($$, $2, $3, "||");
+			}
 		|	
 			{
 				$$.code = new stringstream();
@@ -463,7 +501,10 @@ and_expr:	rel_expr and_expr1
 			}
 		;
 
-and_expr1:	AND rel_expr and_expr1 {printf("and_expr1 -> AND rel_expr and_expr1\n");}
+and_expr1:	AND rel_expr and_expr1 
+			{
+				exp($$, $2, $3, "&&");
+			}
 		|	
 			{
 				$$.code = new stringstream();
@@ -566,11 +607,11 @@ expr:	multi_expr expr1
 
 expr1:		ADD multi_expr expr1 
 			{
-				asdasdasdasdasdassadsadsa
+				exp($$, $2, $3, "+");
 			}
 		|	SUB multi_expr expr1 
 			{
-				printf("expr1 -> SUB multi_expr expr1\n");
+				exp($$, $2, $3, "-");
 			} 
 		|	
 			{
@@ -595,15 +636,15 @@ multi_expr:		term multi_expr1
 
 multi_expr1:	MULT term multi_expr1 
 				{
-					asdasdasdasdasdsadasdasdasdad
+					exp($$, $2, $3, "*");
 				}
 		|		DIV term multi_expr1 
 				{
-					asdasdasdasdasdasdas
+					exp($$, $2, $3, "/");
 				}
 		|		MOD term multi_expr1 
 				{
-					asdasdasdasdasdasdasdasdasd
+					exp($$, $2, $3, "%");
 				}
 		|		
 			{
@@ -642,9 +683,9 @@ term2:		var
 		}
 		|	number 
 			{
-				$$.code = new stringstream();
-				$$.name = new string();
-				*$$.name = to_string($1);
+				$$.code = $1.code;
+				$$.name = $1.name;
+				*$$.name = *$1.name;
 			}
 		|	L_PAREN expr R_PAREN 
 			{
@@ -696,7 +737,7 @@ var:	IDENT var2
 			$$.name = temp();
 			string* temp = new string();
 			*temp = $1;
-			*($$.code) << dot($$.name) << syn_create($$.place, temp, $2.index, "=[]");
+			*($$.code) << dot($$.name) << syn_create($$.name, temp, $2.index, "=[]");
 			$$.value = new string();
 			*$$.value = $1;
 		}
@@ -718,15 +759,22 @@ var2:	L_SQUARE_BRACKET expr R_SQUARE_BRACKET {
 		}	
 	;
 
-number:	NUMBER {printf("number -> NUMBER %d\n", $1); }
+number:	NUMBER 
+		{
+			$$.code = new stringstream();
+			$$.name = new string();
+			*$$.name = itos($1);
+		}
 
 %%
 
+/*
 string ctos (char* str){
 	ostringstream char2str;
 	char2str << str;
 	return char2str.str();
 }
+*/
 
 void dne(string key){
 	if(!map_find(key)){
@@ -765,6 +813,23 @@ string* temp() {
 	*temp = "_temp_" + os.str();
 	temp_count++;
 	return temp;
+}
+
+void exp(Terminal &a, Terminal b, Terminal c, string 
+){
+	a.code = b.code;
+	*(a.code) << c.code->str();
+	if(c.operator == NULL){
+		a.name = b.name;
+		a.operaator = new string();
+		*a.operattor = operator;
+	} else {
+		a.name = temp();
+		a.op = new string();
+		*a.operator = operator;
+
+		*(a.code) << dot(a.name) << syn_create(a.name, b.name, c.name, *c.operator);
+	}
 }
 
 string* label() {
