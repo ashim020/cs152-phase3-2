@@ -1,6 +1,6 @@
 
 %{
-#include "heading.h"
+#include "mini_l.h"
 #include <sstream>
 int yyerror (const char* s);
 int yylex (void);

@@ -13,7 +13,7 @@
 %option noinput nounput noyywrap
 
 %{
- #include "heading.h"
+ #include "mini_l.h"
  #include "y.tab.h"
  #include "cstdlib"
  #include <string.h>
