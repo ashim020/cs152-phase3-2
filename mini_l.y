@@ -507,6 +507,7 @@ rel_expr:	rel_expr1
 
 rel_expr1:	expr comp expr 
 			{
+				printf("rel1 a");
 				$$.code = $1.code;
 				*($$.code) << $2.code->str();
 				*($$.code) << $3.code->str();
@@ -515,18 +516,21 @@ rel_expr1:	expr comp expr
 			}
 		|	TRUE 
 			{
+				printf("rel1 b");
 				$$.code = new stringstream();
 				$$.name = new string();
 				*$$.name = "1";
 			}
 		|	FALSE 
 			{
+				printf("rel1 c");
 				$$.code = new stringstream();
 				$$.name = new string();
 				*$$.name = "0";
 			}
 		|	L_PAREN bool_expr R_PAREN 
 			{
+				printf("rel1 d");
 				$$.code = $2.code;
 				$$.name = $2.name;
 			}
@@ -534,36 +538,42 @@ rel_expr1:	expr comp expr
 
 comp:	EQ 
 		{
+			printf("comp b");
 			$$.code = new stringstream();
 			$$.operator1 = new string();
 			*$$.operator1 = "==";
 		}
 	|	NEQ 
 		{
+			printf("comp c");
 			$$.code = new stringstream();
 			$$.operator1 = new string();
 			*$$.operator1 = "!=";
 		}
 	|	LT 	
 		{
+			printf("comp d");
 			$$.code = new stringstream();
 			$$.operator1 = new string();
 			*$$.operator1 = "<";
 		}
 	|	GT 	
 		{
+			printf("comp e");
 			$$.code = new stringstream();
 			$$.operator1 = new string();
 			*$$.operator1 = ">";
 		}
 	|	GTE	
 		{
+			printf("comp f");
 			$$.code = new stringstream();
 			$$.operator1 = new string();
 			*$$.operator1 = ">=";
 		}
 	|	LTE 
 		{
+			printf("comp g");
 			$$.code = new stringstream();
 			$$.operator1 = new string();
 			*$$.operator1 = "<=";
@@ -572,6 +582,7 @@ comp:	EQ
 
 expr:	multi_expr expr1 
 		{
+			printf("expr");
 			$$.code = $1.code;
 			*($$.code) << $2.code->str();
 			if($2.name != NULL && $2.operator1 != NULL){
@@ -587,14 +598,17 @@ expr:	multi_expr expr1
 
 expr1:		ADD multi_expr expr1 
 			{
+				printf("expr1 a");
 				exp($$, $2, $3, "+");
 			}
 		|	SUB multi_expr expr1 
 			{
+				printf("expr1 b");
 				exp($$, $2, $3, "-");
 			} 
 		|	
 			{
+				printf("expr1 c");
 				$$.code = new stringstream();
 				$$.operator1 = NULL;
 			}	
@@ -602,6 +616,7 @@ expr1:		ADD multi_expr expr1
 
 multi_expr:		term multi_expr1 
 			{
+				printf("mult");
 				$$.code = $1.code;
 				*($$.code) << $2.code->str();
 				if($2.name != NULL && $2.operator1 != NULL){
@@ -616,18 +631,22 @@ multi_expr:		term multi_expr1
 
 multi_expr1:	MULT term multi_expr1 
 				{
+					printf("mult1 a");
 					exp($$, $2, $3, "*");
 				}
 		|		DIV term multi_expr1 
 				{
+					printf("mult1 b");
 					exp($$, $2, $3, "/");
 				}
 		|		MOD term multi_expr1 
 				{
+					printf("mult1 c");
 					exp($$, $2, $3, "%");
 				}
 		|		
 			{
+				printf("mult1 d");
 				$$.code = new stringstream();
 				$$.operator1 = NULL;
 			}
@@ -635,11 +654,13 @@ multi_expr1:	MULT term multi_expr1
 
 term:	term2 
 		{
+			printf("term a");
 			$$.code = $1.code;
 			$$.name = $1.name;
 		}
 	|	SUB term2 
 		{
+			printf("term b");
 			$$.code = $2.code;
 			$$.name = temp();
 			string temp = "-1";
@@ -647,6 +668,7 @@ term:	term2
 		}
 	|	IDENT L_PAREN term3 R_PAREN 
 		{
+			printf("term c");
 			$$.code = $3.code;
 			$$.name = temp();
 			*($$.code) << dot($$.name) << "call " << $1 << ", " << *$$.name << "\n";
@@ -657,18 +679,21 @@ term:	term2
 
 term2:		var 
 		{
+			printf("term2 a");
 			$$.code = $1.code;
 			$$.name = $1.name;
 			$$.index = $1.index;
 		}
 		|	number 
 			{
+				printf("term2 b");
 				$$.code = $1.code;
 				$$.name = $1.name;
 				*$$.name = *$1.name;
 			}
 		|	L_PAREN expr R_PAREN 
 			{
+				printf("term2 c");
 				$$.code = $2.code;
 				$$.name = $2.name;
 			}
@@ -676,12 +701,14 @@ term2:		var
 
 term3:		expr COMMA term3 
 		{
+			printf("term3 a");
 			$$.code = $1.code;
 			*($$.code) << $3.code->str();
 			*($$.code) << "param " << *$1.name;
 		}
 		|	expr 
 			{
+				term3 b
 				$$.code = $1.code;
 				*($$.code) << new stringstream();
 				*($$.code) << "param " << *$1.name;
@@ -689,6 +716,7 @@ term3:		expr COMMA term3
 			}
 		|	
 			{
+				printf("term3 c");
 				$$.code = new stringstream();
 			}
 		;
@@ -696,6 +724,7 @@ term3:		expr COMMA term3
 
 var:	IDENT var2 
 	{
+		printf("var");
 		$$.code = $2.code;
 		$$.type = $2.type;
 		string tonystark = $1;
@@ -732,6 +761,7 @@ var2:	L_SQUARE_BRACKET expr R_SQUARE_BRACKET {
 		}
 	|
 		{
+			printf("var2");
 			$$.code = new stringstream();
 			$$.index = NULL;
 			$$.name = NULL;
@@ -741,6 +771,7 @@ var2:	L_SQUARE_BRACKET expr R_SQUARE_BRACKET {
 
 number:	NUMBER 
 		{
+			printf("number");
 			$$.code = new stringstream();
 			$$.name = new string();
 			*$$.name = itos($1);
