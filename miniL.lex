@@ -1,8 +1,6 @@
 /* MINI-L Flex File
  *
  * Description:  Recognize MINI-L tokens
- **see http://www.cs.ucr.edu/~gkaur007/webpages/token_list_format.html **
- * 
  * Usage:
  *
  * Helpful Links:
